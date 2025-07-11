@@ -156,7 +156,7 @@ void loop() {
       display.setTextSize(2);
       display.setCursor(0, 0);
       display.print("Sicaklik:\n");
-      display.setCursor(0,20);
+      display.setCursor(0,21);
       display.print(temperature, 1);
       display.println("C");
 
