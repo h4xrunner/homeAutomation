@@ -195,7 +195,7 @@ void loop() {
   } else if (displayState == 2) {
     int x = (SCREEN_WIDTH - 16) / 2;
     int y = (SCREEN_HEIGHT - 18) / 2;
-    display.drawBitmap(x, y, heart_bmp, 16, 18, SSD1306_WHITE);
+    display.drawBitmap(x, y, heart_bmp, 32, 36, SSD1306_WHITE);
   }
 
   display.display();
