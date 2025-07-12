@@ -261,7 +261,7 @@ void loop() {
     int x = (SCREEN_WIDTH - 16) / 2;
     int y = (SCREEN_HEIGHT - 18) / 2;
     display.drawBitmap(x, y, heart_bmp, 16, 18, SSD1306_WHITE);
-  } else if (displayState == 2) {
+  } else if (displayState == 3) {
     int x = (SCREEN_WIDTH - 16) / 2;
     int y = (SCREEN_HEIGHT - 18) / 2;
     display.drawBitmap(x, y, penis_bmp, 52, 64, SSD1306_WHITE);
