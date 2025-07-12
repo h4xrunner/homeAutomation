@@ -37,9 +37,31 @@ const char* ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3 * 3600;
 const int daylightOffset_sec = 0;
 
-// Zaman değişkenleri
+// Zaman ve ekran kontrolü
 unsigned long lastDisplaySwitch = 0;
-bool showClock = true;
+uint8_t displayState = 0;  // 0: saat, 1: sıcaklık/nem, 2: kalp
+
+// Kalp bitmapi (16x18 boyutunda)
+const unsigned char heart_bmp [] PROGMEM = {
+  0b00001100, 0b00110000,
+  0b00011110, 0b01111000,
+  0b00111111, 0b11111100,
+  0b01111111, 0b11111110,
+  0b01111111, 0b11111110,
+  0b11111111, 0b11111111,
+  0b11111111, 0b11111111,
+  0b11111111, 0b11111111,
+  0b11111111, 0b11111111,
+  0b01111111, 0b11111110,
+  0b01111111, 0b11111110,
+  0b00111111, 0b11111100,
+  0b00011111, 0b11111000,
+  0b00001111, 0b11110000,
+  0b00000111, 0b11100000,
+  0b00000011, 0b11000000,
+  0b00000001, 0b10000000,
+  0b00000000, 0b00000000
+};
 
 void reconnect() {
   while (!client.connected()) {
@@ -123,13 +145,13 @@ void loop() {
 
   unsigned long currentMillis = millis();
   if (currentMillis - lastDisplaySwitch > 5000) {
-    showClock = !showClock;
+    displayState = (displayState + 1) % 3; // 0 → 1 → 2 → 0
     lastDisplaySwitch = currentMillis;
   }
 
   display.clearDisplay();
 
-  if (showClock) {
+  if (displayState == 0) {
     struct tm timeinfo;
     if (getLocalTime(&timeinfo)) {
       char timeStr[16];
@@ -151,7 +173,8 @@ void loop() {
       display.setCursor(0, 0);
       display.println("Zaman alinamadi.");
     }
-  } else {
+
+  } else if (displayState == 1) {
     if (!isnan(temperature) && !isnan(humidity)) {
       display.setTextSize(2);
       display.setCursor(0, 0);
@@ -168,9 +191,13 @@ void loop() {
       display.setCursor(0, 0);
       display.println("Sensor okunamadi!");
     }
+
+  } else if (displayState == 2) {
+    int x = (SCREEN_WIDTH - 16) / 2;
+    int y = (SCREEN_HEIGHT - 18) / 2;
+    display.drawBitmap(x, y, heart_bmp, 16, 18, SSD1306_WHITE);
   }
 
   display.display();
-
-  delay(100);  // Düşük gecikme ile ekran animasyon gibi akar
+  delay(100);  // Ekran yumuşak geçiş yapsın
 }
