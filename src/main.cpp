@@ -264,7 +264,7 @@ void loop() {
   } else if (displayState == 3) {
     int x = (SCREEN_WIDTH - 16) / 2;
     int y = (SCREEN_HEIGHT - 18) / 2;
-    display.drawBitmap(x, y, penis_bmp, 52, 64, SSD1306_WHITE);
+    display.drawBitmap(x, y, penis_bmp_large, 52, 64, SSD1306_WHITE);
   }
 
   display.display();
