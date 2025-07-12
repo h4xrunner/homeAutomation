@@ -210,7 +210,7 @@ void loop() {
 
   unsigned long currentMillis = millis();
   if (currentMillis - lastDisplaySwitch > 5000) {
-    displayState = (displayState + 1) % 3; // 0 → 1 → 2 → 0
+    displayState = (displayState + 1) % 4; // 0 → 1 → 2 → 0
     lastDisplaySwitch = currentMillis;
   }
 
