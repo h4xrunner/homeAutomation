@@ -209,9 +209,13 @@ void loop() {
     int y = (SCREEN_HEIGHT - 18) / 2;
     display.drawBitmap(x, y, heart_bmp, 16, 18, SSD1306_WHITE);
   } else if (displayState ==3) {
-    int x = (SCREEN_WIDTH - 25) / 2;
-    int y = (SCREEN_HEIGHT - 26) / 2;
-    display.drawBitmap(x, y, dino1, 25, 26, WHITE);
+    for(int i = 2; i < 4;i++){
+      int x = (SCREEN_WIDTH - 25) / i;
+      int y = (SCREEN_HEIGHT - 26) / i;
+      display.drawBitmap(x, y, dino1, 25, 26, WHITE);
+      delay(500);
+    }
+    
 
   }
 
