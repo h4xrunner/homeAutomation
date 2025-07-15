@@ -11,7 +11,6 @@ const char* password = "ia2323Ai";
 
 // MQTT Sunucusu
 const char* mqtt_server = "192.168.1.109";
-
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -32,17 +31,17 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #define LED_HIGH 5
 #define LED_HIGH_CHANNEL 0
 
-// NTP Zaman ayarları
+// NTP Zaman
 const char* ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3 * 3600;
 const int daylightOffset_sec = 0;
 
-// Zaman ve ekran kontrolü
+// Zaman kontrolü
 unsigned long lastDisplaySwitch = 0;
-uint8_t displayState = 0;  // 0: saat, 1: sıcaklık/nem, 2: kalp
+uint8_t displayState = 0;
 
-// Kalp bitmapi (16x18 boyutunda)
-const unsigned char heart_bmp [] PROGMEM = {
+// Kalp bitmapi (16x18)
+const unsigned char heart_bmp[] PROGMEM = {
   0b00001100, 0b00110000,
   0b00011110, 0b01111000,
   0b00111111, 0b11111100,
@@ -62,18 +61,43 @@ const unsigned char heart_bmp [] PROGMEM = {
   0b00000001, 0b10000000,
   0b00000000, 0b00000000
 };
-static const unsigned char PROGMEM dino1[]={
-  // 'dino', 25x26px
-0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0xfe, 0x00, 0x00, 0x06, 0xff, 0x00, 0x00, 0x0e, 0xff, 0x00, 
-0x00, 0x0f, 0xff, 0x00, 0x00, 0x0f, 0xff, 0x00, 0x00, 0x0f, 0xff, 0x00, 0x00, 0x0f, 0xc0, 0x00, 
-0x00, 0x0f, 0xfc, 0x00, 0x40, 0x0f, 0xc0, 0x00, 0x40, 0x1f, 0x80, 0x00, 0x40, 0x7f, 0x80, 0x00, 
-0x60, 0xff, 0xe0, 0x00, 0x71, 0xff, 0xa0, 0x00, 0x7f, 0xff, 0x80, 0x00, 0x7f, 0xff, 0x80, 0x00, 
-0x7f, 0xff, 0x80, 0x00, 0x3f, 0xff, 0x00, 0x00, 0x1f, 0xff, 0x00, 0x00, 0x0f, 0xfe, 0x00, 0x00, 
-0x03, 0xfc, 0x00, 0x00, 0x01, 0xdc, 0x00, 0x00, 0x01, 0x8c, 0x00, 0x00, 0x01, 0x8c, 0x00, 0x00, 
-0x01, 0x0c, 0x00, 0x00, 0x01, 0x8e, 0x00, 0x00
+
+// Dinozor bitmapi (25x26)
+const unsigned char dino1[] PROGMEM = {
+  0x00,0x00,0x00,0x00,0x00,0x07,0xfe,0x00,0x00,0x06,0xff,0x00,0x00,0x0e,0xff,0x00,
+  0x00,0x0f,0xff,0x00,0x00,0x0f,0xff,0x00,0x00,0x0f,0xff,0x00,0x00,0x0f,0xc0,0x00,
+  0x00,0x0f,0xfc,0x00,0x40,0x0f,0xc0,0x00,0x40,0x1f,0x80,0x00,0x40,0x7f,0x80,0x00,
+  0x60,0xff,0xe0,0x00,0x71,0xff,0xa0,0x00,0x7f,0xff,0x80,0x00,0x7f,0xff,0x80,0x00,
+  0x7f,0xff,0x80,0x00,0x3f,0xff,0x00,0x00,0x1f,0xff,0x00,0x00,0x0f,0xfe,0x00,0x00,
+  0x03,0xfc,0x00,0x00,0x01,0xdc,0x00,0x00,0x01,0x8c,0x00,0x00,0x01,0x8c,0x00,0x00,
+  0x01,0x0c,0x00,0x00,0x01,0x8e,0x00,0x00
 };
 
-
+// Çizim ölçeklendirme fonksiyonu
+// x0,y0: sol üst köşe; w,h: orijinal boyut; scale: ölçek faktörü
+void drawBitmapScaled(int x0, int y0,
+                      const unsigned char *bitmap,
+                      uint8_t w, uint8_t h,
+                      uint8_t scale,
+                      uint16_t color) {
+  for (uint8_t j = 0; j < h; j++) {
+    for (uint8_t i = 0; i < w; i++) {
+      // Hangi byte ve hangi bit?
+      uint16_t byteIndex = j * (w / 8) + (i / 8);
+      uint8_t bitMask = 0x80 >> (i % 8);
+      uint8_t byte = pgm_read_byte(&bitmap[byteIndex]);
+      if (byte & bitMask) {
+        // pikselleri ölçeklendirerek dolu dikdörtgen olarak çiz
+        display.fillRect(
+          x0 + i * scale,
+          y0 + j * scale,
+          scale, scale,
+          color
+        );
+      }
+    }
+  }
+}
 
 void reconnect() {
   while (!client.connected()) {
@@ -93,13 +117,11 @@ void setup() {
   Serial.begin(115200);
   pinMode(LED_MID, OUTPUT);
   pinMode(LED_LOW, OUTPUT);
-
   ledcSetup(LED_HIGH_CHANNEL, 5000, 8);
   ledcAttachPin(LED_HIGH, LED_HIGH_CHANNEL);
   ledcWrite(LED_HIGH_CHANNEL, 0);
 
   dht.begin();
-
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 başlatılamadı"));
     for (;;);
@@ -118,18 +140,17 @@ void setup() {
   Serial.println("IP adresi: " + WiFi.localIP().toString());
 
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-
   client.setServer(mqtt_server, 1883);
+
+  lastDisplaySwitch = millis();
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnect();
-  }
+  if (!client.connected()) reconnect();
   client.loop();
 
   float temperature = dht.readTemperature();
-  float humidity = dht.readHumidity();
+  float humidity    = dht.readHumidity();
 
   if (!isnan(temperature) && !isnan(humidity)) {
     if (temperature < 25) {
@@ -145,80 +166,105 @@ void loop() {
       digitalWrite(LED_LOW, LOW);
       ledcWrite(LED_HIGH_CHANNEL, 180);
     }
-
     String payload = "{\"sicaklik\":";
     payload += String(temperature, 1);
-    payload += ", \"nem\":";
+    payload += ",\"nem\":";
     payload += String(humidity, 1);
     payload += "}";
     client.publish("house/esp32-1", payload.c_str());
-    Serial.println("MQTT veri gönderildi: " + payload);
   }
 
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastDisplaySwitch > 5000) {
-    displayState = (displayState + 1) % 4; // 0 → 1 → 2 → 0
-    lastDisplaySwitch = currentMillis;
+  // Ekran mod değişimi
+  if (millis() - lastDisplaySwitch > 5000) {
+    displayState = (displayState + 1) % 4;
+    lastDisplaySwitch = millis();
   }
 
   display.clearDisplay();
 
   if (displayState == 0) {
+    // Saat & Tarih
     struct tm timeinfo;
     if (getLocalTime(&timeinfo)) {
-      char timeStr[16];
-      char dateStr[16];
-      strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeinfo);
-      strftime(dateStr, sizeof(dateStr), "%d/%m/%Y", &timeinfo);
-
+      char tstr[16], dstr[16];
+      strftime(tstr, sizeof(tstr), "%H:%M:%S", &timeinfo);
+      strftime(dstr, sizeof(dstr), "%d/%m/%Y", &timeinfo);
       display.setTextSize(2);
       display.setCursor(0, 0);
       display.println("Saat:");
       display.setTextSize(3);
       display.setCursor(0, 18);
-      display.println(timeStr);
+      display.println(tstr);
       display.setTextSize(1);
       display.setCursor(19, 55);
       display.print("Tarih: ");
-      display.println(dateStr);
+      display.println(dstr);
     } else {
       display.setCursor(0, 0);
       display.println("Zaman alinamadi.");
     }
 
   } else if (displayState == 1) {
+    // Sıcaklık & Nem
     if (!isnan(temperature) && !isnan(humidity)) {
       display.setTextSize(2);
       display.setCursor(0, 0);
       display.print("Sicaklik:\n");
-      display.setCursor(0,21);
+      display.setCursor(0, 21);
       display.print(temperature, 1);
       display.println("C");
-
       display.setCursor(0, 40);
       display.print("Nem: ");
       display.print(humidity, 1);
       display.println("%");
     } else {
       display.setCursor(0, 0);
-      display.println("Sensor okunamadi!");
+      display.println("Gamzemi çok seviyom");
     }
 
   } else if (displayState == 2) {
-    int x = (SCREEN_WIDTH - 16) / 2;
-    int y = (SCREEN_HEIGHT - 18) / 2;
-    display.drawBitmap(x, y, heart_bmp, 16, 18, SSD1306_WHITE);
-  } else if (displayState ==3) {
-    for(int i = 2; i < 4;i++){
-      int x = (SCREEN_WIDTH - 25) / i;
-      int y = (SCREEN_HEIGHT - 26) / i;
-      display.drawBitmap(x, y, dino1, 25, 26, WHITE);
-      delay(500);
-    }
-    
+    // Kalp atışı animasyonu
+    uint8_t baseW = 16, baseH = 18;
+    for (int beat = 0; beat < 3; beat++) {
+      // Küçük kalp
+      display.clearDisplay();
+      drawBitmapScaled(
+        (SCREEN_WIDTH - baseW) / 2,
+        ((SCREEN_HEIGHT - baseH) / 2)+5,
+        heart_bmp, baseW, baseH,
+        1, SSD1306_WHITE
+      );
+      display.display();
+      delay(200);
 
+      // Büyük kalp
+      display.clearDisplay();
+      drawBitmapScaled(
+        (SCREEN_WIDTH - baseW*2) / 2,
+        ((SCREEN_HEIGHT - baseH*2) / 2)+5,
+        heart_bmp, baseW, baseH,
+        2, SSD1306_WHITE
+      );
+      display.display();
+      delay(200);
+    }
+    lastDisplaySwitch = millis();
+    displayState = 3;
+    return;
+
+  } else if (displayState == 3) {
+    // Dinozor yürütme animasyonu
+    for (int x = 0; x <= SCREEN_WIDTH; x += 4) {
+      display.clearDisplay();
+      display.drawBitmap(x, (SCREEN_HEIGHT - 26) / 2, dino1, 25, 26, SSD1306_WHITE);
+      display.display();
+      delay(60);
+    }
+    lastDisplaySwitch = millis();
+    displayState = 0;
+    return;
   }
 
   display.display();
-  delay(100);  // Ekran yumuşak geçiş yapsın
+  delay(100);
 }
